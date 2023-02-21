@@ -79,13 +79,15 @@ void loop()
     // read the incoming bytes:
     int rlen = Serial.readBytes(buf, 7);
 
+    Serial.println(rlen);
+
     // prints the received data
     Serial.print("I received: ");
     for(int i = 0; i < rlen; i++)
     {
       Serial.print(buf[i]);      
     }
-    Serial.println();
+//    Serial.println();
     String my_string(buf); 
     Serial.println(my_string);
     if(my_string == "up_date")
