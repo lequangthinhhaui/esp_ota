@@ -9,17 +9,51 @@
 #include <HTTPClient.h>
 #include <Update.h>
 
-// location of firmware file on external web server
-// change to your actual .bin location
 #define HOST "http://192.168.5.236:8000/"
 
-HTTPClient client;
+HTTPClient client;  
 // Your WiFi credentials
 const char* ssid = "MTE_DEVELOP";
 const char* password = "meiko@12345mkac";
 // Global variables
 int totalLength;       //total size of firmware
 int currentLength = 0; //current size of written firmware
+
+void updating()
+{
+  client.begin(HOST);
+  int resp = client.GET();
+  Serial.print("Response: ");
+  Serial.println(resp);
+  if(resp == 200)
+  {
+      totalLength = client.getSize();      // get length of document (is -1 when Server sends no Content-Length header)
+      int len = totalLength;      // transfer to local variable
+      Update.begin(UPDATE_SIZE_UNKNOWN);      // this is required to start firmware update process
+      Serial.printf("FW Size: %u\n",totalLength);
+      uint8_t buff[128] = { 0 };      // create buffer for read
+      WiFiClient * stream = client.getStreamPtr();      // get tcp stream
+      Serial.println("Updating firmware...");      // read all data from server
+      while(client.connected() && (len > 0 || len == -1))
+      {
+           size_t size = stream->available(); // get available data size
+           if(size) 
+           {
+              int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));// read up to 128 byte
+              updateFirmware(buff, c); // pass to function
+              if(len > 0) {
+                 len -= c;
+              }
+           }
+           delay(1);
+      }
+  }
+  else
+  {
+    Serial.println("Cannot download firmware file. Only HTTP response 200: OK is supported. Double check firmware location #defined in HOST.");
+  }
+  client.end(); 
+}
 
 void setup() {
   Serial.begin(115200);
@@ -34,54 +68,44 @@ void setup() {
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-  // Connect to external web server
-  client.begin(HOST);
-  // Get file, just to check if each reachable
-  int resp = client.GET();
-  Serial.print("Response: ");
-  Serial.println(resp);
-  // If file is reachable, start downloading
-  if(resp == 200){
-      // get length of document (is -1 when Server sends no Content-Length header)
-      totalLength = client.getSize();
-      // transfer to local variable
-      int len = totalLength;
-      // this is required to start firmware update process
-      Update.begin(UPDATE_SIZE_UNKNOWN);
-      Serial.printf("FW Size: %u\n",totalLength);
-      // create buffer for read
-      uint8_t buff[128] = { 0 };
-      // get tcp stream
-      WiFiClient * stream = client.getStreamPtr();
-      // read all data from server
-      Serial.println("Updating firmware...");
-      while(client.connected() && (len > 0 || len == -1)) {
-           // get available data size
-           size_t size = stream->available();
-           if(size) {
-              // read up to 128 byte
-              int c = stream->readBytes(buff, ((size > sizeof(buff)) ? sizeof(buff) : size));
-              // pass to function
-              updateFirmware(buff, c);
-              if(len > 0) {
-                 len -= c;
-              }
-           }
-           delay(1);
-      }
-  }else{
-    Serial.println("Cannot download firmware file. Only HTTP response 200: OK is supported. Double check firmware location #defined in HOST.");
-  }
-  client.end();
-  
+  Serial.println(WiFi.localIP()); 
 }
 
-void loop() {}
+char buf[7];
+String data_receive;
+void loop() 
+{
+  if (Serial.available() > 0) {
+    // read the incoming bytes:
+    int rlen = Serial.readBytes(buf, 7);
+
+    // prints the received data
+    Serial.print("I received: ");
+    for(int i = 0; i < rlen; i++)
+    {
+      Serial.print(buf[i]);      
+    }
+    Serial.println();
+    String my_string(buf); 
+    Serial.println(my_string);
+    if(my_string == "up_date")
+    {
+        updating();
+    }
+    else
+    {
+      Serial.println("no update");
+    }
+  }
+
+
+}
 
 // Function to update firmware incrementally
 // Buffer is declared to be 128 so chunks of 128 bytes
 // from firmware is written to device until server closes
+
+
 void updateFirmware(uint8_t *data, size_t len){
   Update.write(data, len);
   currentLength += len;
