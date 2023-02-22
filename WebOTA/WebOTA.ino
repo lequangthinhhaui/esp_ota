@@ -15,7 +15,6 @@ HTTPClient client;
 // Your WiFi credentials
 const char* ssid = "MKAC";
 const char* password = "MKAC12345";
-// Global variables
 
 
 
@@ -25,7 +24,8 @@ class esp32Update
   int totalLength;       //total size of firmware
   int currentLength = 0; //current size of written firmware
   
-  void updateFirmware(uint8_t *data, size_t len){
+  void updateFirmware(uint8_t *data, size_t len)
+  {
     Update.write(data, len);
     currentLength += len;
     // Print dots while waiting for update to finish
@@ -75,7 +75,6 @@ class esp32Update
 };
 
 
-
 void setup() {
   Serial.begin(115200);
   // Start WiFi connection
@@ -121,7 +120,3 @@ void loop()
     }
   }
 }
-
-// Function to update firmware incrementally
-// Buffer is declared to be 128 so chunks of 128 bytes
-// from firmware is written to device until server closes
